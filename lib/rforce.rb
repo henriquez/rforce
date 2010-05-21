@@ -49,6 +49,7 @@ SOFTWARE.
 require 'rforce/binding'
 require 'rforce/soap_response'
 
+
 module RForce
   # Expand Ruby data structures into XML.
   def expand(builder, args, xmlns = nil)

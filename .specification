@@ -1,0 +1,115 @@
+--- !ruby/object:Gem::Specification 
+name: rforce
+version: !ruby/object:Gem::Version 
+  version: 0.4.1
+platform: ruby
+authors: 
+- Ian Dees
+autorequire: 
+bindir: bin
+cert_chain: []
+
+date: 2010-03-12 00:00:00 -08:00
+default_executable: 
+dependencies: 
+- !ruby/object:Gem::Dependency 
+  name: builder
+  type: :runtime
+  version_requirement: 
+  version_requirements: !ruby/object:Gem::Requirement 
+    requirements: 
+    - - ">="
+      - !ruby/object:Gem::Version 
+        version: 2.0.0
+    version: 
+- !ruby/object:Gem::Dependency 
+  name: facets
+  type: :runtime
+  version_requirement: 
+  version_requirements: !ruby/object:Gem::Requirement 
+    requirements: 
+    - - ">="
+      - !ruby/object:Gem::Version 
+        version: "2.4"
+    version: 
+- !ruby/object:Gem::Dependency 
+  name: rspec
+  type: :development
+  version_requirement: 
+  version_requirements: !ruby/object:Gem::Requirement 
+    requirements: 
+    - - ">="
+      - !ruby/object:Gem::Version 
+        version: "1.3"
+    version: 
+- !ruby/object:Gem::Dependency 
+  name: hoe
+  type: :development
+  version_requirement: 
+  version_requirements: !ruby/object:Gem::Requirement 
+    requirements: 
+    - - ">="
+      - !ruby/object:Gem::Version 
+        version: 2.5.0
+    version: 
+description: RForce is a simple, usable binding to the SalesForce API.
+email: 
+- undees@gmail.com
+executables: []
+
+extensions: []
+
+extra_rdoc_files: 
+- History.txt
+- Manifest.txt
+- README.txt
+files: 
+- History.txt
+- Manifest.txt
+- README.txt
+- Rakefile
+- lib/rforce.rb
+- lib/rforce/binding.rb
+- lib/rforce/soap_pullable.rb
+- lib/rforce/soap_response.rb
+- lib/rforce/soap_response_expat.rb
+- lib/rforce/soap_response_hpricot.rb
+- lib/rforce/soap_response_rexml.rb
+- lib/rforce/version.rb
+- spec/rforce_spec.rb
+- spec/soap-response.xml
+- spec/spec.opts
+- spec/spec_helper.rb
+- tasks/timing.rake
+has_rdoc: true
+homepage: http://rforce.rubyforge.org
+licenses: []
+
+post_install_message: 
+rdoc_options: 
+- --main
+- README.txt
+require_paths: 
+- lib
+required_ruby_version: !ruby/object:Gem::Requirement 
+  requirements: 
+  - - ">="
+    - !ruby/object:Gem::Version 
+      version: "0"
+  version: 
+required_rubygems_version: !ruby/object:Gem::Requirement 
+  requirements: 
+  - - ">="
+    - !ruby/object:Gem::Version 
+      version: "0"
+  version: 
+requirements: []
+
+rubyforge_project: rforce
+rubygems_version: 1.3.5
+signing_key: 
+specification_version: 3
+summary: RForce is a simple, usable binding to the SalesForce API.
+test_files: []
+
+

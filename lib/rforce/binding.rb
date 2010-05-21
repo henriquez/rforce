@@ -4,7 +4,14 @@ require 'zlib'
 require 'stringio'
 require 'rexml/document'
 require 'builder'
-require 'oauth'
+require 'oauth' # the 0.3.6 version must be checked out  
+
+# call_remote uses post2 and the Oauth access token object
+# uses post
+class OAuth::AccessToken
+  alias_method :post2, :post
+end
+
 
 module RForce
   # Implements the connection to the SalesForce server.
@@ -12,8 +19,10 @@ module RForce
     include RForce
 
     DEFAULT_BATCH_SIZE = 10
-    attr_accessor :batch_size, :url, :assignment_rule_id, :use_default_rule, :update_mru, :client_id, :trigger_user_email,
-      :trigger_other_email, :trigger_auto_response_email
+    attr_accessor :batch_size, :url, :assignment_rule_id, 
+                  :use_default_rule, :update_mru, :client_id, 
+                  :trigger_user_email,
+                  :trigger_other_email, :trigger_auto_response_email
 
     # Fill in the guts of this typical SOAP envelope
     # with the session ID and the body of the SOAP request.
@@ -62,25 +71,10 @@ module RForce
 
 
     def init_server(url)
-      @url = URI.parse(url)
-
       if (@oauth)
-        consumer = OAuth::Consumer.new \
-          @oauth[:consumer_key],
-          @oauth[:consumer_secret],
-          { :site => url }
-
-        consumer.http.set_debug_output $stderr if show_debug
-
-        @server  = OAuth::AccessToken.new \
-          consumer,
-          @oauth[:access_token],
-          @oauth[:access_secret]
-
-        class << @server
-          alias_method :post2, :post
-        end
+        @server  = OAuth::AccessToken.new consumer, @oauth[:access_token], @oauth[:access_secret]
       else
+        @url = URI.parse(url)
         @server = Net::HTTP.new(@url.host, @url.port)
         @server.use_ssl = @url.scheme == 'https'
         @server.verify_mode = OpenSSL::SSL::VERIFY_NONE
@@ -89,6 +83,45 @@ module RForce
         @server.set_debug_output $stderr if show_debug
       end
     end
+
+
+    def consumer
+       OAuth::Consumer.new(@oauth[:consumer_key], 
+                           @oauth[:consumer_secret], {
+           :site               => "https://login.salesforce.com",
+           :signature_method   => 'HMAC-SHA1', # this is default, but just for clarity
+           :scheme             => :body,
+           :request_token_path => "/_nc_external/system/security/oauth/RequestTokenHandler",
+           :access_token_path  => "/_nc_external/system/security/oauth/AccessTokenHandler",
+           :authorize_path     => '/setup/secur/RemoteAccessAuthorizationPage.apexp',
+          })
+     end
+
+     
+     
+    # Log in to the server with OAuth, remembering
+    # the session ID returned to us by SalesForce.
+    def login_with_oauth
+      # post is method of Oauth::AccessToken, @server is instance of it
+      result = @server.post @oauth[:login_url]
+      
+      case result
+      when Net::HTTPSuccess
+        puts "Net::HTTPSuccess!"
+        doc = REXML::Document.new result.body
+        @session_id = doc.elements['*/sessionId'].text
+        server_url  = doc.elements['*/serverUrl'].text
+        @url = URI.parse(server_url)
+
+        return {:sessionId => @session_id, :serverUrl => server_url}
+      when Net::HTTPUnauthorized
+        raise "Invalid OAuth tokens=#{@server.inspect}"
+      else
+        raise 'Unexpected error: #{response.inspect}'
+      end
+    end
+
+
 
 
     # Log in to the server with a user name and password, remembering
@@ -108,27 +141,9 @@ module RForce
 
       response
     end
-
-    # Log in to the server with OAuth, remembering
-    # the session ID returned to us by SalesForce.
-    def login_with_oauth
-      result = @server.post @oauth[:login_url], '', {}
-
-      case result
-      when Net::HTTPSuccess
-        doc = REXML::Document.new result.body
-        @session_id = doc.elements['*/sessionId'].text
-        server_url  = doc.elements['*/serverUrl'].text
-        init_server server_url
-
-        return {:sessionId => @sessionId, :serverUrl => server_url}
-      when Net::HTTPUnauthorized
-        raise 'Invalid OAuth tokens'
-      else
-        raise 'Unexpected error: #{response.inspect}'
-      end
-    end
-
+    
+    
+    
     # Call a method on the remote server.  Arguments can be
     # a hash or (if order is important) an array of alternating
     # keys and values.
@@ -171,7 +186,7 @@ module RForce
         'Connection' => 'Keep-Alive',
         'Content-Type' => 'text/xml',
         'SOAPAction' => '""',
-        'User-Agent' => 'activesalesforce rforce/1.0'
+        'User-Agent' => 'activesalesforce rforce/0.4.1 LH'
       }
 
       unless show_debug
@@ -186,8 +201,12 @@ module RForce
       content = decode(response)
 
       # Check to see if INVALID_SESSION_ID was raised and try to relogin in
-      if method != :login and @session_id and content =~ /sf:INVALID_SESSION_ID/
-        login(@user, @password)
+      if method != :login && @session_id  && content =~ /sf:INVALID_SESSION_ID/
+        if @oauth
+          login_with_oauth
+        else  
+          login(@user, @password)
+        end  
 
         # repackage and rencode request with the new session id
         request = (Envelope % [@session_id, @batch_size, extra_headers, expanded])
@@ -229,7 +248,6 @@ module RForce
     # encode gzip
     def encode(request)
       return request if show_debug
-
       begin
         ostream = StringIO.new
         gzw = Zlib::GzipWriter.new(ostream)
