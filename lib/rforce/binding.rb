@@ -6,12 +6,6 @@ require 'rexml/document'
 require 'builder'
 require 'oauth' # the 0.3.6 version must be checked out  
 
-# call_remote uses post2 and the Oauth access token object
-# uses post
-class OAuth::AccessToken
-  alias_method :post2, :post
-end
-
 
 module RForce
   # Implements the connection to the SalesForce server.
@@ -71,17 +65,13 @@ module RForce
 
 
     def init_server(url)
-      if (@oauth)
-        @server  = OAuth::AccessToken.new consumer, @oauth[:access_token], @oauth[:access_secret]
-      else
-        @url = URI.parse(url)
-        @server = Net::HTTP.new(@url.host, @url.port)
-        @server.use_ssl = @url.scheme == 'https'
-        @server.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      @url = URI.parse(url)
+      @server = Net::HTTP.new(@url.host, @url.port)
+      @server.use_ssl = @url.scheme == 'https'
+      @server.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-        # run ruby with -d or env variable SHOWSOAP=true to see SOAP wiredumps.
-        @server.set_debug_output $stderr if show_debug
-      end
+      # run ruby with -d or env variable SHOWSOAP=true to see SOAP wiredumps.
+      @server.set_debug_output $stderr if show_debug
     end
 
 
@@ -103,15 +93,15 @@ module RForce
     # the session ID returned to us by SalesForce.
     def login_with_oauth
       # post is method of Oauth::AccessToken, @server is instance of it
-      result = @server.post @oauth[:login_url]
+      access_token  = OAuth::AccessToken.new consumer, @oauth[:access_token], @oauth[:access_secret]
+      result = access_token.post @oauth[:login_url]
       
       case result
       when Net::HTTPSuccess
-        puts "Net::HTTPSuccess!"
         doc = REXML::Document.new result.body
         @session_id = doc.elements['*/sessionId'].text
         server_url  = doc.elements['*/serverUrl'].text
-        @url = URI.parse(server_url)
+        init_server(server_url)
 
         return {:sessionId => @session_id, :serverUrl => server_url}
       when Net::HTTPUnauthorized
