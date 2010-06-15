@@ -105,9 +105,9 @@ module RForce
 
         return {:sessionId => @session_id, :serverUrl => server_url}
       when Net::HTTPUnauthorized
-        raise "Invalid OAuth tokens=#{@server.inspect}"
+        raise "Invalid OAuth tokens=#{@oauth.inspect}"
       else
-        raise "Unexpected error: #{response.inspect}"
+        raise "Unexpected error: #{result.inspect}"
       end
     end
 
